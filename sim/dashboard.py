@@ -95,8 +95,8 @@ def _run_app() -> None:
 
     with st.sidebar:
         st.header("Simulation Inputs")
-        total_range = st.slider("Total sensors (vehicles) range", min_value=1, max_value=15, value=(3, 5), step=1)
-        m_runs = st.number_input("M runs per composition", min_value=10, max_value=1000, value=100, step=10)
+        total_range = st.slider("Total sensors (vehicles) range", min_value=1, max_value=8, value=(2, 4), step=1)
+        m_runs = st.number_input("M runs per composition", min_value=10, max_value=200, value=50, step=10)
         seed = st.number_input("Random seed", min_value=0, max_value=999999, value=42, step=1)
 
         run_button = st.button("Run Pareto Simulation", type="primary")
@@ -111,14 +111,18 @@ def _run_app() -> None:
         status_text = st.empty()
         progress_log = st.empty()
         progress_messages: list[str] = []
+        _last_update: list[int] = [-1]
 
         def _progress_callback(done: int, total: int, message: str) -> None:
-            ratio = 1.0 if total <= 0 else min(max(done / total, 0.0), 1.0)
-            progress_bar.progress(ratio)
-            status_text.write(f"Progress: {done}/{total} - {message}")
             progress_messages.append(f"{done}/{total} - {message}")
-            recent_messages = progress_messages[-10:]
-            progress_log.markdown("**Live Progress**\n\n" + "\n".join(f"- {item}" for item in recent_messages))
+            # Throttle UI redraws: update every 10 steps, on first, and on completion.
+            if done == total or done - _last_update[0] >= 10 or _last_update[0] == -1:
+                _last_update[0] = done
+                ratio = 1.0 if total <= 0 else min(max(done / total, 0.0), 1.0)
+                progress_bar.progress(ratio)
+                status_text.write(f"Progress: {done}/{total} - {message}")
+                recent_messages = progress_messages[-10:]
+                progress_log.markdown("**Live Progress**\n\n" + "\n".join(f"- {item}" for item in recent_messages))
 
         with st.spinner("Running simulations..."):
             all_results, frontier, stats_map = run_budget_range_pareto(
@@ -127,6 +131,7 @@ def _run_app() -> None:
                 m_runs=int(m_runs),
                 seed=int(seed),
                 progress_callback=_progress_callback,
+                max_workers=1,
             )
 
         st.session_state.sim_results = all_results

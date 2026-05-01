@@ -9,7 +9,7 @@ from typing import Callable, Dict, List, Optional, Sequence, Tuple
 import numpy as np
 import pandas as pd
 
-from .postal_sim import available_postal_vehicle_ids, load_grid_and_population as load_postal_grid_and_population
+from .postal_sim import load_grid_and_population as load_postal_grid_and_population
 from .postal_sim import sample_postal_run, VehicleGridMatrix, get_vehicle_grid_matrix
 from .ridehailing_sim import RideHailingContext, RoadGraph, build_ridehailing_context, load_road_graph, simulate_ridehailing_composition
 from .utility import MetricSummary, default_sensing_utility, summarize_metrics
