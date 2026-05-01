@@ -103,10 +103,7 @@ class SingleCompositionStats:
     cv: float
     utility_q05: float
     utility_q95: float
-    utility_summary: MetricSummary
     mean_travel_time_matrix: pd.DataFrame
-    std_travel_time_matrix: pd.DataFrame
-    cv_travel_time_matrix: pd.DataFrame
     q05_travel_time_matrix: pd.DataFrame
     q95_travel_time_matrix: pd.DataFrame
 
@@ -251,6 +248,41 @@ def load_ridehailing_pool_matrix(path: str | Path) -> "RideHailingPoolMatrix":
     return RideHailingPoolMatrix(grid_ids=grid_ids, data=data, grid_index=grid_index)
 
 
+def save_precomputed_results(
+    all_results: pd.DataFrame,
+    frontier: pd.DataFrame,
+    stats_map: Dict[Tuple[int, int], "SingleCompositionStats"],
+    path: str | Path,
+    metadata: Optional[Dict] = None,
+) -> None:
+    """Persist Pareto simulation results to a pickle file for fast dashboard loading."""
+    import pickle
+    p = Path(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    payload = {"all_results": all_results, "frontier": frontier, "stats_map": stats_map}
+    if metadata:
+        payload.update(metadata)
+    with open(p, "wb") as f:
+        pickle.dump(payload, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+
+def load_precomputed_results(
+    path: str | Path,
+) -> Tuple[pd.DataFrame, pd.DataFrame, Dict[Tuple[int, int], "SingleCompositionStats"]]:
+    """Load results previously saved with :func:`save_precomputed_results`.
+
+    Returns (all_results, frontier, stats_map).
+    Raises FileNotFoundError if the file does not exist.
+    """
+    import pickle
+    p = Path(path)
+    if not p.exists():
+        raise FileNotFoundError(f"Precomputed results not found at {p}.")
+    with open(p, "rb") as f:
+        payload = pickle.load(f)
+    return payload["all_results"], payload["frontier"], payload["stats_map"]
+
+
 def _build_ridehailing_pool(
     road_graph: RoadGraph,
     grid_gdf: pd.DataFrame,
@@ -367,7 +399,7 @@ def _run_single_composition_with_data(
 
     utility_summary = summarize_metrics(utilities)
     grid_ids = grid_gdf["grid_id"].to_numpy(dtype=int)
-    mean_matrix, std_matrix, cv_matrix = _summarize_matrices(run_matrices, grid_ids)
+    mean_matrix, _, _ = _summarize_matrices(run_matrices, grid_ids)
 
     q05_idx = _quantile_index(utilities, 0.05)
     q95_idx = _quantile_index(utilities, 0.95)
@@ -384,10 +416,7 @@ def _run_single_composition_with_data(
         cv=utility_summary.cv,
         utility_q05=float(np.quantile(np.asarray(utilities, dtype=float), 0.05)),
         utility_q95=float(np.quantile(np.asarray(utilities, dtype=float), 0.95)),
-        utility_summary=utility_summary,
         mean_travel_time_matrix=mean_matrix,
-        std_travel_time_matrix=std_matrix,
-        cv_travel_time_matrix=cv_matrix,
         q05_travel_time_matrix=q05_matrix,
         q95_travel_time_matrix=q95_matrix,
     )

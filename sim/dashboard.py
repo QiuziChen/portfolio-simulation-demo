@@ -16,8 +16,10 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
-from sim.postal_sim import load_grid_and_population
-from sim.simulation import SingleCompositionStats, run_budget_range_pareto
+from sim.postal_sim import load_grid_and_population, resolve_path
+from sim.simulation import SingleCompositionStats, run_budget_range_pareto, load_precomputed_results
+
+PRECOMPUTED_PATH = resolve_path("data/precomputed_results.pkl")
 
 
 _IS_WORKER = multiprocessing.current_process().name != "MainProcess"
@@ -93,18 +95,38 @@ def _run_app() -> None:
     st.set_page_config(page_title="Fleet Composition Sensing Dashboard", layout="wide")
     st.title("Fleet Composition Simulation Dashboard")
 
+    has_precomputed = PRECOMPUTED_PATH.exists()
+
     with st.sidebar:
         st.header("Simulation Inputs")
-        total_range = st.slider("Total sensors (vehicles) range", min_value=5, max_value=15, value=(5, 10), step=1)
+
+        if has_precomputed:
+            st.success("Precomputed results loaded (fleet 10–20).")
+            st.caption(
+                "Results are precomputed for fleet sizes 10–20 with 200 MC runs. "
+                "Use the controls below to run a custom simulation instead."
+            )
+        else:
+            st.warning("No precomputed data found. Run `python precompute.py` locally and push `data/precomputed_results.pkl`.")
+
+        total_range = st.slider("Total sensors (vehicles) range", min_value=1, max_value=8, value=(2, 4), step=1)
         m_runs = st.number_input("M runs per composition", min_value=10, max_value=200, value=50, step=10)
         seed = st.number_input("Random seed", min_value=0, max_value=999999, value=42, step=1)
 
-        run_button = st.button("Run Pareto Simulation", type="primary")
+        run_button = st.button("Run Custom Simulation", type="secondary")
 
     if "sim_results" not in st.session_state:
         st.session_state.sim_results = None
         st.session_state.frontier = None
         st.session_state.stats_map = None
+
+    # Auto-load precomputed results on first render (no button press needed)
+    if has_precomputed and st.session_state.frontier is None and not run_button:
+        with st.spinner("Loading precomputed results…"):
+            all_results, frontier, stats_map = load_precomputed_results(PRECOMPUTED_PATH)
+        st.session_state.sim_results = all_results
+        st.session_state.frontier = frontier
+        st.session_state.stats_map = stats_map
 
     if run_button:
         progress_bar = st.progress(0)
