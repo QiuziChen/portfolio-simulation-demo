@@ -254,7 +254,3 @@ def _run_app() -> None:
         st.warning("Simulation completed, but no feasible frontier points were found for the selected range.")
     else:
         st.info("Set parameters in the sidebar and click 'Run Pareto Simulation'.")
-
-
-if not _IS_WORKER:
-    _run_app()

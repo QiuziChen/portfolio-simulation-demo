@@ -156,7 +156,9 @@ def _summarize_matrices(run_matrices: List[pd.DataFrame], grid_ids: np.ndarray) 
     ])
     mean_values = matrix_values.mean(axis=0)
     std_values = matrix_values.std(axis=0)
-    cv_values = np.where(mean_values == 0, 0.0, std_values / mean_values)
+    nonzero = mean_values != 0
+    cv_values = np.zeros_like(mean_values)
+    np.divide(std_values, mean_values, out=cv_values, where=nonzero)
 
     mean_df = pd.DataFrame({"grid_id": grid_ids, "total_time": mean_values})
     std_df = pd.DataFrame({"grid_id": grid_ids, "total_time": std_values})
