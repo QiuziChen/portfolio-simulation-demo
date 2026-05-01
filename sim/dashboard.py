@@ -124,8 +124,8 @@ def _run_app() -> None:
         fig = px.scatter(
             frontier,
             x="expected_utility",
-            y="5th quantile utility",
-            color="fleet size",
+            y="utility_q05",
+            color="total_vehicles",
             hover_data=["n_postal", "n_ridehailing"],
             custom_data=["composition_label"],
             title="Pareto Frontier by Total Vehicles",
@@ -134,7 +134,7 @@ def _run_app() -> None:
         fig.update_traces(marker=dict(size=12, opacity=0.85), selector=dict(mode="markers"))
         fig.add_trace(go.Scatter(
             x=[selected_row["expected_utility"]],
-            y=[selected_row["5th quantile utility"]],
+            y=[selected_row["utility_q05"]],
             mode="markers",
             marker=dict(color="#d62728", size=22, symbol="star"),
             name="Selected composition",
