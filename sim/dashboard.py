@@ -112,7 +112,7 @@ def _run_app() -> None:
         )
 
         st.subheader("Pareto Frontier (x: Expected Utility, y: 5th Quantile Utility)")
-        st.caption("Click any point to select it.")
+        # st.caption("Click any point to select it.")
 
         if "pareto_selected_label" not in st.session_state or st.session_state.pareto_selected_label not in frontier["composition_label"].values:
             st.session_state.pareto_selected_label = frontier["composition_label"].iloc[0]
@@ -128,7 +128,7 @@ def _run_app() -> None:
             color="total_vehicles",
             hover_data=["n_postal", "n_ridehailing"],
             custom_data=["composition_label"],
-            title="Pareto Frontier by Total Vehicles",
+            # title="Pareto Frontier by Total Vehicles",
         )
         fig.update_layout(height=700)
         fig.update_traces(marker=dict(size=12, opacity=0.85), selector=dict(mode="markers"))
@@ -195,7 +195,7 @@ def _run_app() -> None:
                 yaxis_title="Utility",
                 xaxis_title="",
                 showlegend=False,
-                height=420,
+                height=700,
                 yaxis=dict(range=[
                     max(0.0, stats.utility_q05 - 0.01),
                     min(1.0, stats.utility_q95 + 0.01),

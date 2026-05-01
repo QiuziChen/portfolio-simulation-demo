@@ -21,11 +21,11 @@ from pathlib import Path
 
 TOTAL_MIN = 15
 TOTAL_MAX = 20
-M_RUNS = 200
+M_RUNS = 100
 SEED = 43
 # Start from the equal split (n_postal == n_ridehailing) and allow up to
 # BALANCE_DELTA steps shifting vehicles from one type to the other.
-BALANCE_DELTA = 18
+BALANCE_DELTA = 16
 OUT_PATH = Path("data/precomputed_results.pkl")
 
 

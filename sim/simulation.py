@@ -683,7 +683,7 @@ def run_budget_range_pareto(
     frontier_frames: List[pd.DataFrame] = []
     for total in sorted(full_results["total_vehicles"].unique()):
         subset = full_results[full_results["total_vehicles"] == total].copy()
-        frontier_frames.append(pareto_frontier(evaluate_composition_result(subset), max_points=None))
+        frontier_frames.append(pareto_frontier(evaluate_composition_result(subset), max_points=5))
     frontier = pd.concat(frontier_frames, ignore_index=True) if frontier_frames else full_results.iloc[0:0].copy()
 
     if progress_callback:
