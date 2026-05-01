@@ -87,8 +87,8 @@ def _make_map(
 
 
 def _run_app() -> None:
-    st.set_page_config(page_title="Fleet Composition Sensing Dashboard", layout="wide")
-    st.title("Fleet Composition Simulation Dashboard")
+    st.set_page_config(page_title="Sensing Portfolio Dashboard", layout="wide")
+    st.title("Sensing Portfolio Dashboard")
 
     if not PRECOMPUTED_PATH.exists():
         st.error(
@@ -111,7 +111,7 @@ def _run_app() -> None:
             axis=1,
         )
 
-        st.subheader("Pareto Frontier (x: Average Utility, y: 5th Quantile Utility / VaR)")
+        st.subheader("Pareto Frontier (x: Expected Utility, y: 5th Quantile Utility)")
         st.caption("Click any point to select it.")
 
         if "pareto_selected_label" not in st.session_state or st.session_state.pareto_selected_label not in frontier["composition_label"].values:
@@ -124,9 +124,9 @@ def _run_app() -> None:
         fig = px.scatter(
             frontier,
             x="expected_utility",
-            y="utility_q05",
-            color="total_vehicles",
-            hover_data=["n_postal", "n_ridehailing", "value_at_risk", "utility_q95"],
+            y="5th quantile utility",
+            color="fleet size",
+            hover_data=["n_postal", "n_ridehailing"],
             custom_data=["composition_label"],
             title="Pareto Frontier by Total Vehicles",
         )
@@ -134,7 +134,7 @@ def _run_app() -> None:
         fig.update_traces(marker=dict(size=12, opacity=0.85), selector=dict(mode="markers"))
         fig.add_trace(go.Scatter(
             x=[selected_row["expected_utility"]],
-            y=[selected_row["utility_q05"]],
+            y=[selected_row["5th quantile utility"]],
             mode="markers",
             marker=dict(color="#d62728", size=22, symbol="star"),
             name="Selected composition",
@@ -197,8 +197,8 @@ def _run_app() -> None:
                 showlegend=False,
                 height=420,
                 yaxis=dict(range=[
-                    max(0.0, stats.utility_q05 - 0.05),
-                    min(1.0, stats.utility_q95 + 0.05),
+                    max(0.0, stats.utility_q05 - 0.01),
+                    min(1.0, stats.utility_q95 + 0.01),
                 ]),
             )
             st.plotly_chart(scatter_fig, use_container_width=True)
@@ -212,12 +212,11 @@ def _run_app() -> None:
                 "composition": {
                     "n_postal": stats.n_postal,
                     "n_ridehailing": stats.n_ridehailing,
-                    "total_vehicles": stats.total_vehicles,
+                    "fleet_size": stats.total_vehicles,
                 },
                 "avg_utility": stats.expected_utility,
-                "cv_utility": stats.cv,
-                "q05_utility": stats.utility_q05,
-                "q95_utility": stats.utility_q95,
+                "5th_quantile_utility": stats.utility_q05,
+                "95th_quantile_utility": stats.utility_q95,
             }
         )
     elif st.session_state.get("frontier") is not None:
