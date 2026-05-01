@@ -1,4 +1,7 @@
-"""Precompute and save Pareto simulation results for fleet sizes 10–20.
+"""Precompute and save Pareto simulation results.
+
+Focuses on near-balanced compositions (|n_postal - n_ridehailing| <= BALANCE_DELTA)
+across a wider fleet size range to produce more frontier diversity.
 
 Run this locally (not on Streamlit Cloud) before pushing:
 
@@ -19,12 +22,15 @@ from pathlib import Path
 TOTAL_MIN = 15
 TOTAL_MAX = 20
 M_RUNS = 200
-SEED = 42
+SEED = 43
+# Start from the equal split (n_postal == n_ridehailing) and allow up to
+# BALANCE_DELTA steps shifting vehicles from one type to the other.
+BALANCE_DELTA = 18
 OUT_PATH = Path("data/precomputed_results.pkl")
 
 
 def main() -> None:
-    print(f"Running Pareto simulation for fleet sizes {TOTAL_MIN}–{TOTAL_MAX}, {M_RUNS} MC runs each…")
+    print(f"Running Pareto simulation for fleet sizes {TOTAL_MIN}–{TOTAL_MAX}, balance_delta={BALANCE_DELTA}, {M_RUNS} MC runs each…")
 
     done_steps: list[int] = [0]
 
@@ -39,6 +45,7 @@ def main() -> None:
         total_vehicle_max=TOTAL_MAX,
         m_runs=M_RUNS,
         seed=SEED,
+        balance_delta=BALANCE_DELTA,
         progress_callback=_progress,
         max_workers=None,  # use all cores locally
     )
@@ -48,7 +55,7 @@ def main() -> None:
         frontier=frontier,
         stats_map=stats_map,
         path=OUT_PATH,
-        metadata={"total_min": TOTAL_MIN, "total_max": TOTAL_MAX, "m_runs": M_RUNS, "seed": SEED},
+        metadata={"total_min": TOTAL_MIN, "total_max": TOTAL_MAX, "m_runs": M_RUNS, "seed": SEED, "balance_delta": BALANCE_DELTA},
     )
 
     print(f"\nSaved → {OUT_PATH}  ({OUT_PATH.stat().st_size / 1024:.0f} KB)")

@@ -546,7 +546,15 @@ def run_budget_range_pareto(
     progress_callback: Optional[ProgressCallback] = None,
     max_workers: Optional[int] = None,
     ridehailing_pool_matrix_path: Optional[str | Path] = "data/ridehailing_pool_matrix.npz",
+    balance_delta: Optional[int] = None,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, Dict[Tuple[int, int], SingleCompositionStats]]:
+    """Run Monte Carlo Pareto simulation over a range of total fleet sizes.
+
+    Args:
+        balance_delta: If set, only compositions where
+            ``|n_postal - n_ridehailing| <= balance_delta`` are evaluated.
+            Useful for focusing on near-equal split compositions.
+    """
     if total_vehicle_min > total_vehicle_max:
         raise ValueError("total_vehicle_min must be <= total_vehicle_max")
     if total_vehicle_min < 0:
@@ -560,7 +568,10 @@ def run_budget_range_pareto(
 
     compositions: List[Tuple[int, int]] = []
     for total in range(int(total_vehicle_min), int(total_vehicle_max) + 1):
-        compositions.extend(generate_compositions_for_total(total, max_postal=max_postal))
+        candidates = generate_compositions_for_total(total, max_postal=max_postal)
+        if balance_delta is not None:
+            candidates = [(p, r) for p, r in candidates if abs(p - r) <= balance_delta]
+        compositions.extend(candidates)
 
     steps_per_composition = max(int(m_runs), 0) + 1
     total_steps = len(compositions) * steps_per_composition + 1
