@@ -95,7 +95,7 @@ def _run_app() -> None:
 
     with st.sidebar:
         st.header("Simulation Inputs")
-        total_range = st.slider("Total sensors (vehicles) range", min_value=1, max_value=8, value=(2, 4), step=1)
+        total_range = st.slider("Total sensors (vehicles) range", min_value=5, max_value=15, value=(5, 10), step=1)
         m_runs = st.number_input("M runs per composition", min_value=10, max_value=200, value=50, step=10)
         seed = st.number_input("Random seed", min_value=0, max_value=999999, value=42, step=1)
 
