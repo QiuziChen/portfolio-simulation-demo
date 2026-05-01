@@ -7,7 +7,6 @@ from .simulation import run_budget_range_pareto, run_single_composition_simulati
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Fleet composition simulation demo")
-    parser.add_argument("--roads", default="data/lausanne_roads_encoded.gpkg")
     parser.add_argument("--grid", default="data/grid_100m.gpkg")
     parser.add_argument("--population", default="data/swiss_population.csv")
     parser.add_argument("--n-postal", type=int, default=2)
@@ -25,7 +24,6 @@ def main() -> None:
         n_postal=args.n_postal,
         n_ridehailing=args.n_ridehailing,
         m_runs=args.m_runs,
-        roads_path=args.roads,
         grid_path=args.grid,
         population_path=args.population,
         seed=args.seed,
@@ -42,7 +40,6 @@ def main() -> None:
         total_vehicle_min=args.total_min,
         total_vehicle_max=args.total_max,
         m_runs=args.m_runs,
-        roads_path=args.roads,
         grid_path=args.grid,
         population_path=args.population,
         seed=args.seed,

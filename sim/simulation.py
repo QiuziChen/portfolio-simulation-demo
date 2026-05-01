@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 
 from .postal_sim import load_grid_and_population as load_postal_grid_and_population
-from .postal_sim import sample_postal_run, VehicleGridMatrix, get_vehicle_grid_matrix
+from .postal_sim import sample_postal_run, VehicleGridMatrix, get_vehicle_grid_matrix, resolve_path
 from .ridehailing_sim import RideHailingContext, RoadGraph, build_ridehailing_context, load_road_graph, simulate_ridehailing_composition
 from .utility import MetricSummary, default_sensing_utility, summarize_metrics
 
@@ -398,10 +398,8 @@ def run_single_composition_simulation(
     n_ridehailing: int,
     m_runs: int = 1000,
     labor_time_limit_hours: float = 5.0,
-    avg_speed_kmh: float = 50.0,
     break_min_minutes: float = 0.0,
     break_max_minutes: float = 10.0,
-    roads_path: str | Path = "data/lausanne_roads_encoded.gpkg",
     grid_path: str | Path = "data/grid_100m.gpkg",
     population_path: str | Path = "data/swiss_population.csv",
     seed: int = 42,
@@ -412,8 +410,7 @@ def run_single_composition_simulation(
     grid_gdf = load_postal_grid_and_population(grid_path=grid_path, population_path=population_path)
     vehicle_grid_matrix = get_vehicle_grid_matrix()
     postal_vehicle_ids = list(vehicle_grid_matrix.vehicle_ids)
-    road_graph = load_road_graph(path=roads_path, default_speed_kmh=avg_speed_kmh)
-    ride_context = build_ridehailing_context(road_graph, grid_gdf)
+    ridehailing_pool_matrix = load_ridehailing_pool_matrix(resolve_path("data/ridehailing_pool_matrix.npz"))
 
     return _run_single_composition_with_data(
         n_postal=n_postal,
@@ -423,10 +420,9 @@ def run_single_composition_simulation(
         break_min_minutes=break_min_minutes,
         break_max_minutes=break_max_minutes,
         grid_gdf=grid_gdf,
-        road_graph=road_graph,
-        ride_context=ride_context,
         postal_vehicle_ids=postal_vehicle_ids,
         vehicle_grid_matrix=vehicle_grid_matrix,
+        ridehailing_pool_matrix=ridehailing_pool_matrix,
         seed=seed,
     )
 
@@ -513,10 +509,8 @@ def run_budget_range_pareto(
     total_vehicle_max: int,
     m_runs: int = 1000,
     labor_time_limit_hours: float = 5.0,
-    avg_speed_kmh: float = 50.0,
     break_min_minutes: float = 0.0,
     break_max_minutes: float = 10.0,
-    roads_path: str | Path = "data/lausanne_roads_encoded.gpkg",
     grid_path: str | Path = "data/grid_100m.gpkg",
     population_path: str | Path = "data/swiss_population.csv",
     seed: int = 42,
@@ -552,30 +546,14 @@ def run_budget_range_pareto(
     ridehailing_pm: Optional[RideHailingPoolMatrix] = None
     any_ride = any(n > 0 for _, n in compositions)
     if any_ride:
-        pool_path = Path(ridehailing_pool_matrix_path) if ridehailing_pool_matrix_path else None
-        if pool_path is not None and not pool_path.is_absolute():
-            pool_path = Path(roads_path).resolve().parents[1] / pool_path
+        pool_path = resolve_path(ridehailing_pool_matrix_path) if ridehailing_pool_matrix_path else None
         if pool_path is not None and pool_path.exists():
             ridehailing_pm = load_ridehailing_pool_matrix(pool_path)
         else:
-            # Only load road graph and build context when pool must be generated
-            road_graph = load_road_graph(path=roads_path, default_speed_kmh=avg_speed_kmh)
-            ride_context = build_ridehailing_context(road_graph, grid_gdf)
-            pool_size = min(int(m_runs), 100)
-            single_vehicle_pool = _build_ridehailing_pool(
-                road_graph=road_graph,
-                grid_gdf=grid_gdf,
-                ride_context=ride_context,
-                pool_size=pool_size,
-                seed=seed,
-                labor_time_limit_hours=labor_time_limit_hours,
-                break_min_minutes=break_min_minutes,
-                break_max_minutes=break_max_minutes,
-                max_workers=max_workers,
+            raise FileNotFoundError(
+                f"Precomputed ride-hailing pool matrix not found at {pool_path}. "
+                "Ensure data/ridehailing_pool_matrix.npz is present in the repository."
             )
-            ridehailing_pm = build_ridehailing_pool_matrix(single_vehicle_pool, grid_gdf)
-            if pool_path is not None:
-                save_ridehailing_pool_matrix(ridehailing_pm, pool_path)
 
     rows: List[dict] = []
     stats_by_composition: Dict[Tuple[int, int], SingleCompositionStats] = {}
