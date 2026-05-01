@@ -7,8 +7,6 @@ PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 if str(PACKAGE_ROOT) not in sys.path:
     sys.path.insert(0, str(PACKAGE_ROOT))
 
-import multiprocessing
-
 import folium
 from matplotlib import colormaps as mpl_colormaps
 from matplotlib.colors import to_hex
@@ -17,12 +15,9 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from sim.postal_sim import load_grid_and_population, resolve_path
-from sim.simulation import SingleCompositionStats, run_budget_range_pareto, load_precomputed_results
+from sim.simulation import SingleCompositionStats, load_precomputed_results
 
 PRECOMPUTED_PATH = resolve_path("data/precomputed_results.pkl")
-
-
-_IS_WORKER = multiprocessing.current_process().name != "MainProcess"
 
 
 def _make_map(
@@ -95,71 +90,19 @@ def _run_app() -> None:
     st.set_page_config(page_title="Fleet Composition Sensing Dashboard", layout="wide")
     st.title("Fleet Composition Simulation Dashboard")
 
-    has_precomputed = PRECOMPUTED_PATH.exists()
+    if not PRECOMPUTED_PATH.exists():
+        st.error(
+            "Precomputed results not found. "
+            "Run `python precompute.py` locally and push `data/precomputed_results.pkl`."
+        )
+        return
 
-    with st.sidebar:
-        st.header("Simulation Inputs")
-
-        if has_precomputed:
-            st.success("Precomputed results loaded (fleet 10–20).")
-            st.caption(
-                "Results are precomputed for fleet sizes 10–20 with 200 MC runs. "
-                "Use the controls below to run a custom simulation instead."
-            )
-        else:
-            st.warning("No precomputed data found. Run `python precompute.py` locally and push `data/precomputed_results.pkl`.")
-
-        total_range = st.slider("Total sensors (vehicles) range", min_value=1, max_value=8, value=(2, 4), step=1)
-        m_runs = st.number_input("M runs per composition", min_value=10, max_value=200, value=50, step=10)
-        seed = st.number_input("Random seed", min_value=0, max_value=999999, value=42, step=1)
-
-        run_button = st.button("Run Custom Simulation", type="secondary")
-
-    if "sim_results" not in st.session_state:
-        st.session_state.sim_results = None
-        st.session_state.frontier = None
-        st.session_state.stats_map = None
-
-    # Auto-load precomputed results on first render (no button press needed)
-    if has_precomputed and st.session_state.frontier is None and not run_button:
+    if "frontier" not in st.session_state or st.session_state.frontier is None:
         with st.spinner("Loading precomputed results…"):
             all_results, frontier, stats_map = load_precomputed_results(PRECOMPUTED_PATH)
         st.session_state.sim_results = all_results
         st.session_state.frontier = frontier
         st.session_state.stats_map = stats_map
-
-    if run_button:
-        progress_bar = st.progress(0)
-        status_text = st.empty()
-        progress_log = st.empty()
-        progress_messages: list[str] = []
-        _last_update: list[int] = [-1]
-
-        def _progress_callback(done: int, total: int, message: str) -> None:
-            progress_messages.append(f"{done}/{total} - {message}")
-            # Throttle UI redraws: update every 10 steps, on first, and on completion.
-            if done == total or done - _last_update[0] >= 10 or _last_update[0] == -1:
-                _last_update[0] = done
-                ratio = 1.0 if total <= 0 else min(max(done / total, 0.0), 1.0)
-                progress_bar.progress(ratio)
-                status_text.write(f"Progress: {done}/{total} - {message}")
-                recent_messages = progress_messages[-10:]
-                progress_log.markdown("**Live Progress**\n\n" + "\n".join(f"- {item}" for item in recent_messages))
-
-        with st.spinner("Running simulations..."):
-            all_results, frontier, stats_map = run_budget_range_pareto(
-                total_vehicle_min=int(total_range[0]),
-                total_vehicle_max=int(total_range[1]),
-                m_runs=int(m_runs),
-                seed=int(seed),
-                progress_callback=_progress_callback,
-                max_workers=1,
-            )
-
-        st.session_state.sim_results = all_results
-        st.session_state.frontier = frontier
-        st.session_state.stats_map = stats_map
-        status_text.success("Simulation completed.")
 
     if st.session_state.frontier is not None and not st.session_state.frontier.empty:
         frontier = st.session_state.frontier.copy()
@@ -277,7 +220,5 @@ def _run_app() -> None:
                 "q95_utility": stats.utility_q95,
             }
         )
-    elif st.session_state.frontier is not None:
-        st.warning("Simulation completed, but no feasible frontier points were found for the selected range.")
-    else:
-        st.info("Set parameters in the sidebar and click 'Run Pareto Simulation'.")
+    elif st.session_state.get("frontier") is not None:
+        st.warning("No feasible frontier points were found.")
