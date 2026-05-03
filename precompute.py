@@ -19,13 +19,13 @@ from __future__ import annotations
 from sim.simulation import run_budget_range_pareto, save_precomputed_results
 from pathlib import Path
 
-TOTAL_MIN = 15
-TOTAL_MAX = 20
+TOTAL_MIN = 8
+TOTAL_MAX = 12
 M_RUNS = 100
 SEED = 43
 # Start from the equal split (n_postal == n_ridehailing) and allow up to
 # BALANCE_DELTA steps shifting vehicles from one type to the other.
-BALANCE_DELTA = 16
+BALANCE_DELTA = 8
 OUT_PATH = Path("data/precomputed_results.pkl")
 
 
