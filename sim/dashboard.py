@@ -7,6 +7,7 @@ PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 if str(PACKAGE_ROOT) not in sys.path:
     sys.path.insert(0, str(PACKAGE_ROOT))
 
+import branca.colormap as bcm
 import folium
 from matplotlib import colormaps as mpl_colormaps
 from matplotlib.colors import to_hex
@@ -25,6 +26,7 @@ def _make_map(
     mean_matrix,
     q05_matrix,
     q95_matrix,
+    vmax: float = 600.0,
 ) -> folium.Map:
     map_gdf = grid_gdf[["grid_id", "geometry"]].copy()
     map_gdf = map_gdf.to_crs("EPSG:4326")
@@ -46,21 +48,27 @@ def _make_map(
     folium.TileLayer("CartoDB positron", name="Basemap", control=False).add_to(fmap)
 
     reds = mpl_colormaps["plasma"]
+    vmin = 0.0
+
+    # Single shared colorbar for all three layers
+    colormap = bcm.LinearColormap(
+        colors=[to_hex(reds(i / 255)) for i in range(256)],
+        vmin=vmin,
+        vmax=vmax,
+        caption="Travel Time (s)",
+    )
+    colormap.add_to(fmap)
 
     def _add_layer(frame, value_column: str, layer_name: str, show: bool) -> None:
         layer_frame = frame[["grid_id", "geometry", value_column]].copy()
         layer_frame = layer_frame.fillna({value_column: 0.0})
         layer_frame = layer_frame[layer_frame[value_column] > 0].copy()
-        values = layer_frame[value_column].to_numpy(dtype=float)
-        min_value = float(values.min()) if len(values) else 0.0
-        max_value = float(values.max()) if len(values) else 0.0
-        scale = max(max_value - min_value, 1e-9)
 
         feature_group = folium.FeatureGroup(name=layer_name, overlay=False, control=True, show=show)
 
         def _style_function(feature):
             value = float(feature["properties"].get(value_column, 0.0))
-            normalized = (value - min_value) / scale if scale > 0 else 0.0
+            normalized = max(0.0, min(1.0, (value - vmin) / (vmax - vmin)))
             return {
                 "fillColor": to_hex(reds(normalized)),
                 "color": "#2f2f2f",
@@ -151,7 +159,7 @@ def _run_app() -> None:
             q95_matrix=stats.q95_travel_time_matrix,
         )
 
-        chart_col, utility_col = st.columns([2, 1])
+        chart_col, utility_col = st.columns([4, 3])
         with chart_col:
             chart_event = st.plotly_chart(
                 fig,
@@ -169,7 +177,6 @@ def _run_app() -> None:
                         st.rerun()
 
         with utility_col:
-            st.subheader("Utility Summary for Selected Point")
             upper_error = max(float(stats.utility_q95 - stats.expected_utility), 0.0)
             lower_error = max(float(stats.expected_utility - stats.utility_q05), 0.0)
             scatter_fig = go.Figure(
