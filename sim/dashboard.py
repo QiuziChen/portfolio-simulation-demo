@@ -96,7 +96,8 @@ def _make_map(
 
 def _run_app() -> None:
     st.set_page_config(page_title="Sensing Portfolio Dashboard", layout="wide")
-    st.title("Sensing Portfolio Dashboard")
+    st.title("🚗 Sensing Portfolio Dashboard")
+    st.caption("Explore optimal fleet compositions of postal and ride-hailing vehicles, and analyse their impact on travel time coverage across the city.")
 
     if not PRECOMPUTED_PATH.exists():
         st.error(
@@ -119,8 +120,8 @@ def _run_app() -> None:
             axis=1,
         )
 
-        st.subheader("Pareto Frontier (x: Expected Utility, y: 5th Quantile Utility)")
-        # st.caption("Click any point to select it.")
+        st.subheader("📈 Pareto Frontier")
+        st.caption("Each point represents a fleet composition (postal + ride-hailing vehicles). The x-axis shows expected utility across all scenarios; the y-axis shows the worst-case (5th percentile) utility. Click a point to inspect its travel-time map and statistics.")
 
         if "pareto_selected_label" not in st.session_state or st.session_state.pareto_selected_label not in frontier["composition_label"].values:
             st.session_state.pareto_selected_label = frontier["composition_label"].iloc[0]
@@ -161,6 +162,7 @@ def _run_app() -> None:
 
         chart_col, utility_col = st.columns([4, 3])
         with chart_col:
+            st.caption("🗺️ Pareto frontier — colour encodes total fleet size. Click any point to select a composition.")
             chart_event = st.plotly_chart(
                 fig,
                 on_select="rerun",
@@ -177,6 +179,7 @@ def _run_app() -> None:
                         st.rerun()
 
         with utility_col:
+            st.caption("📊 Utility distribution for the selected composition — error bars show the 5th–95th percentile range across simulation runs.")
             upper_error = max(float(stats.utility_q95 - stats.expected_utility), 0.0)
             lower_error = max(float(stats.expected_utility - stats.utility_q05), 0.0)
             scatter_fig = go.Figure(
@@ -210,10 +213,12 @@ def _run_app() -> None:
             )
             st.plotly_chart(scatter_fig, use_container_width=True)
 
-        st.subheader("Travel Time Distribution Map")
+        st.subheader("🗺️ Travel Time Distribution Map")
+        st.caption("Average and quantile travel times per 100 m grid cell for the selected fleet composition. Use the layer toggle (top-right of the map) to switch between the mean, 5th-percentile, and 95th-percentile scenarios. Darker colours indicate longer travel times.")
         st.components.v1.html(fmap._repr_html_(), height=650)
 
-        st.subheader("Selected Composition Details")
+        st.subheader("🔍 Selected Composition Details")
+        st.caption("Summary statistics for the currently selected fleet composition.")
         st.write(
             {
                 "composition": {
